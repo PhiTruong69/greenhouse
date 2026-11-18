@@ -1,0 +1,328 @@
+<title>Kiến trúc Nhà kính IoT</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: một cột đọc, sơ đồ và bảng rộng cuộn ngang riêng; màu theo hai loại luồng: dữ liệu (lá) và lệnh (cam đất) */
+:root{
+  --bg:#f6f8f5; --surface:#ffffff; --fg:#1d2a22; --muted:#5b6b61; --line:#c9d4cc;
+  --tel:#1f7a4d; --cmd:#c2621b; --zone:#eef3ef; --zone2:#f3f0ea; --chip:#e3efe7;
+  --f-body:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121a15; --surface:#18221c; --fg:#e4ece6; --muted:#9aab9f; --line:#33443a;
+  --tel:#5cc28c; --cmd:#f0975a; --zone:#1a261f; --zone2:#231f1a; --chip:#203328; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121a15; --surface:#18221c; --fg:#e4ece6; --muted:#9aab9f; --line:#33443a;
+  --tel:#5cc28c; --cmd:#f0975a; --zone:#1a261f; --zone2:#231f1a; --chip:#203328; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.6}
+.wrap{max-width:1180px;margin:0 auto;padding-block:32px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:32px}
+h1{font-size:28px;line-height:1.25;margin:0;text-wrap:balance;font-weight:700}
+h2{font-size:19px;margin:0 0 12px;text-wrap:balance}
+p{margin:0;max-width:72ch}
+.lead{color:var(--muted)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+code,.mono{font-family:var(--f-mono);font-size:.86em}
+.legend{display:flex;flex-wrap:wrap;gap:18px;font-size:13px;color:var(--muted);align-items:center;margin-bottom:10px}
+.legend span{display:inline-flex;gap:8px;align-items:center}
+.sw{width:30px;height:0;border-top:2.5px solid var(--tel)}
+.sw.cmd{border-top:2.5px dashed var(--cmd)}
+.sw.usr{border-top:1.5px dotted var(--muted)}
+.diagram{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px}
+.diagram svg{display:block;min-width:980px;width:100%;height:auto}
+svg text{font-family:var(--f-body);fill:var(--fg)}
+svg .hdr{font-size:11px;font-weight:600;letter-spacing:.08em;fill:var(--muted)}
+svg .t{font-size:13.5px;font-weight:600}
+svg .s{font-size:11.5px;fill:var(--muted)}
+svg .lbl{font-size:10.5px;font-family:var(--f-mono);paint-order:stroke;stroke:var(--surface);stroke-width:5px;stroke-linejoin:round}
+svg .lbl.tel{fill:var(--tel)} svg .lbl.cmd{fill:var(--cmd)} svg .lbl.usr{fill:var(--muted)}
+svg .box{fill:var(--surface);stroke:var(--line);stroke-width:1.2}
+svg .zone{fill:var(--zone);stroke:var(--line);stroke-width:1}
+svg .zone2{fill:var(--zone2);stroke:var(--line);stroke-width:1}
+svg .tel{stroke:var(--tel);stroke-width:2;fill:none}
+svg .cmd{stroke:var(--cmd);stroke-width:2;fill:none;stroke-dasharray:6 4}
+svg .usr{stroke:var(--muted);stroke-width:1.4;fill:none;stroke-dasharray:2 4}
+svg .mk-tel{fill:var(--tel)} svg .mk-cmd{fill:var(--cmd)} svg .mk-usr{fill:var(--muted)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:680px;font-size:14px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tbody tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tfoot td{font-weight:600;border-top:1.5px solid var(--line);border-bottom:0}
+.chip{display:inline-block;font-family:var(--f-mono);font-size:12px;background:var(--chip);color:var(--tel);border-radius:5px;padding:1px 6px;margin:1px 2px 1px 0}
+.chip.n{color:var(--cmd)}
+.score{display:flex;flex-wrap:wrap;gap:12px}
+.score .k{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 16px;min-width:150px;display:flex;flex-direction:column}
+.score .v{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+.score .l{font-size:13px;color:var(--muted)}
+.flows{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.flow{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;min-width:0}
+.flow h3{margin:0 0 4px;font-size:15.5px}
+.flow .codes{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-bottom:8px}
+.flow ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.note{font-size:14px;color:var(--muted)}
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:8px">
+    <h1>Kiến trúc nhà kính thông minh – bản rút gọn</h1>
+    <p class="lead">Đăng ký 10 điểm công nghệ (tính tối đa 8, dư 2 điểm phòng khi bị chấm một phần) và 1 điểm nâng cao. 2 node ESP32-S3, 1 bridge NodeMCU, 1 gateway PC. Chỉ Node 1 có cảm biến.</p>
+  </header>
+
+  <section class="score" aria-label="Tóm tắt">
+    <div class="k"><span class="v">10 / 8</span><span class="l">Công nghệ đăng ký / tính tối đa</span></div>
+    <div class="k"><span class="v">1</span><span class="l">Nâng cao (N06)</span></div>
+    <div class="k"><span class="v">1</span><span class="l">Cảm biến không khí: SHT20 RS485</span></div>
+    <div class="k"><span class="v">3</span><span class="l">Board: 2 ESP32-S3 + 1 NodeMCU</span></div>
+  </section>
+
+  <section>
+    <h2>Yếu tố đăng ký tính điểm</h2>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th>Mã</th><th>Yếu tố</th><th>Hiện thực ở đâu</th><th class="num">Điểm</th></tr></thead>
+      <tbody>
+        <tr><td><span class="chip">T02</span></td><td>Cảm biến Modbus RS485</td><td>Node 1 đọc SHT20 RS485 (nhiệt độ, độ ẩm không khí)</td><td class="num">1.0</td></tr>
+        <tr><td><span class="chip">T06</span></td><td>ESP-NOW</td><td>Node 1 ⇄ Bridge, hai chiều có ACK</td><td class="num">1.5</td></tr>
+        <tr><td><span class="chip">T08</span></td><td>IoT Gateway trên PC</td><td>Gom dữ liệu từ Bridge, gửi CoreIOT, nhận RPC bật bơm và chuyển xuống Node 1</td><td class="num">1.0</td></tr>
+        <tr><td><span class="chip">T15</span></td><td>Gateway CoreIOT đồng bộ với gateway local</td><td>Sub-device tự tạo, trạng thái online, đồng bộ ngưỡng, gửi bù khi mất mạng</td><td class="num">2.0</td></tr>
+        <tr><td><span class="chip">T11</span></td><td>Template, dashboard, điều khiển từ xa</td><td>CoreIOT</td><td class="num">1.0</td></tr>
+        <tr><td><span class="chip">T12</span></td><td>RuleChain</td><td>Đất khô → bơm Node 1 · nhiệt độ Node 1 cao → quạt Node 2</td><td class="num">1.0</td></tr>
+        <tr><td><span class="chip">T13</span></td><td>Notification</td><td>Email khi vượt ngưỡng hoặc node offline</td><td class="num">0.5</td></tr>
+        <tr><td><span class="chip">T14</span></td><td>OTA firmware</td><td>Node 2 (kết nối trực tiếp CoreIOT)</td><td class="num">2.0</td></tr>
+        <tr><td><span class="chip n">N06</span></td><td>Dashboard riêng, detect và record sự kiện</td><td>Web app đọc CoreIOT API, ghi log sự kiện</td><td class="num">+1.0</td></tr>
+      </tbody>
+      <tfoot><tr><td colspan="3">Tổng công nghệ (tính tối đa 8) + nâng cao</td><td class="num">10 + 1</td></tr></tfoot>
+    </table>
+    </div>
+    <p class="note" style="margin-top:10px">Nếu dư thời gian: thêm T07 (webserver trên Node 2, +1 điểm), không tốn thêm linh kiện.</p>
+  </section>
+
+  <section>
+    <h2>Sơ đồ kiến trúc</h2>
+    <div class="legend">
+      <span><i class="sw"></i>Dữ liệu (telemetry)</span>
+      <span><i class="sw cmd"></i>Lệnh / RPC / OTA</span>
+      <span><i class="sw usr"></i>Truy cập API</span>
+    </div>
+    <div class="diagram">
+<svg viewBox="0 0 1160 560" role="img" aria-label="Node 1 có SHT20 RS485 gửi ESP-NOW tới Bridge NodeMCU, Bridge nối USB vào Gateway PC, Gateway lên CoreIOT; Node 2 chỉ có relay, kết nối trực tiếp CoreIOT và nhận OTA; RuleChain dùng nhiệt độ Node 1 để bật quạt Node 2">
+  <defs>
+    <marker id="aT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="mk-tel" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="aC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="mk-cmd" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="aU" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="mk-usr" d="M0,0 L10,5 L0,10 z"/></marker>
+  </defs>
+
+  <text class="hdr" x="115" y="20" text-anchor="middle">THIẾT BỊ · ESP32-S3</text>
+  <text class="hdr" x="365" y="20" text-anchor="middle">CẦU NỐI</text>
+  <text class="hdr" x="640" y="20" text-anchor="middle">GATEWAY PC (PYTHON)</text>
+  <text class="hdr" x="1000" y="20" text-anchor="middle">COREIOT (CLOUD)</text>
+
+  <rect class="zone" x="500" y="30" width="280" height="145" rx="10"/>
+  <rect class="zone2" x="860" y="30" width="280" height="500" rx="10"/>
+
+  <!-- Node 1 -->
+  <rect class="box" x="20" y="55" width="190" height="130" rx="8"/>
+  <text class="t" x="34" y="79">Node 1 – Vườn</text>
+  <text class="s" x="34" y="101">SHT20 RS485 Modbus (T02)</text>
+  <text class="s" x="34" y="119">Độ ẩm đất (analog)</text>
+  <text class="s" x="34" y="137">Relay bơm</text>
+  <text class="s" x="34" y="155">ESP-NOW, không dùng WiFi</text>
+  <text class="s" x="34" y="173">Sub-device của gateway</text>
+
+  <!-- Bridge -->
+  <rect class="box" x="300" y="70" width="130" height="90" rx="8"/>
+  <text class="t" x="314" y="94">Bridge</text>
+  <text class="s" x="314" y="116">S3 cắm USB</text>
+  <text class="s" x="314" y="134">ESP-NOW ⇄ Serial</text>
+  <text class="s" x="314" y="152">(T06)</text>
+
+  <!-- Gateway core -->
+  <rect class="box" x="520" y="55" width="240" height="105" rx="8"/>
+  <text class="t" x="534" y="79">Gateway core (T08 · T15)</text>
+  <text class="s" x="534" y="101">Serial ⇄ MQTT Gateway API</text>
+  <text class="s" x="534" y="119">Chuyển RPC xuống Node 1</text>
+  <text class="s" x="534" y="137">Đồng bộ ngưỡng (attribute)</text>
+  <text class="s" x="534" y="155">SQLite: lưu khi mất mạng</text>
+
+  <!-- Node 2 -->
+  <rect class="box" x="20" y="370" width="190" height="115" rx="8"/>
+  <text class="t" x="34" y="394">Node 2 – Điều khiển</text>
+  <text class="s" x="34" y="416">Relay quạt + đèn</text>
+  <text class="s" x="34" y="434">Không gắn cảm biến</text>
+  <text class="s" x="34" y="452">Nhận OTA (T14)</text>
+  <text class="s" x="34" y="470">WiFi, nối thẳng CoreIOT</text>
+
+  <!-- CoreIOT -->
+  <rect class="box" x="880" y="55" width="240" height="80" rx="8"/>
+  <text class="t" x="894" y="79">Gateway device (T15)</text>
+  <text class="s" x="894" y="101">↳ sub-device Node1-Garden</text>
+  <text class="s" x="894" y="119">tự tạo khi gateway connect</text>
+
+  <rect class="box" x="880" y="155" width="240" height="72" rx="8"/>
+  <text class="t" x="894" y="178">RuleChain (T12)</text>
+  <text class="s" x="894" y="197">đất khô → bơm (Node 1)</text>
+  <text class="s" x="894" y="215">nhiệt độ Node 1 cao → quạt Node 2</text>
+
+  <rect class="box" x="880" y="245" width="240" height="52" rx="8"/>
+  <text class="t" x="894" y="268">Notification (T13)</text>
+  <text class="s" x="894" y="286">email khi vượt ngưỡng / offline</text>
+
+  <rect class="box" x="880" y="315" width="240" height="40" rx="8"/>
+  <text class="t" x="894" y="340">Dashboard (T11)</text>
+
+  <rect class="box" x="880" y="375" width="240" height="62" rx="8"/>
+  <text class="t" x="894" y="399">Device Node2-Control</text>
+  <text class="s" x="894" y="419">token riêng · fw_state</text>
+
+  <rect class="box" x="880" y="462" width="240" height="50" rx="8"/>
+  <text class="t" x="894" y="485">OTA package (T14)</text>
+  <text class="s" x="894" y="502">firmware .bin v1.1</text>
+
+  <!-- N06 -->
+  <rect class="box" x="500" y="470" width="300" height="70" rx="8"/>
+  <text class="t" x="514" y="494">Dashboard riêng (N06)</text>
+  <text class="s" x="514" y="514">Phát hiện và ghi log: bơm bật/tắt,</text>
+  <text class="s" x="514" y="530">vượt ngưỡng, node offline</text>
+
+  <!-- Node1 <-> Bridge -->
+  <path class="tel" d="M210,100 H298" marker-end="url(#aT)"/>
+  <text class="lbl tel" x="255" y="93" text-anchor="middle">ESP-NOW</text>
+  <path class="cmd" d="M300,135 H212" marker-end="url(#aC)"/>
+  <text class="lbl cmd" x="255" y="153" text-anchor="middle">lệnh bơm</text>
+
+  <!-- Bridge <-> core -->
+  <path class="tel" d="M430,100 H518" marker-end="url(#aT)"/>
+  <text class="lbl tel" x="474" y="93" text-anchor="middle">USB Serial</text>
+  <path class="cmd" d="M520,135 H432" marker-end="url(#aC)"/>
+  <text class="lbl cmd" x="474" y="153" text-anchor="middle">JSON lệnh</text>
+
+  <!-- core <-> CoreIOT -->
+  <path class="tel" d="M760,85 H878" marker-end="url(#aT)"/>
+  <text class="lbl tel" x="820" y="78" text-anchor="middle">MQTT Gateway API</text>
+  <path class="cmd" d="M880,120 H762" marker-end="url(#aC)"/>
+  <text class="lbl cmd" x="820" y="138" text-anchor="middle">RPC · attributes</text>
+
+  <!-- CoreIOT internal -->
+  <path class="tel" d="M1000,135 V153" marker-end="url(#aT)"/>
+  <path class="cmd" d="M1120,175 H1128 V95 H1122" marker-end="url(#aC)"/>
+  <path class="cmd" d="M1120,210 H1134 V405 H1122" marker-end="url(#aC)"/>
+  <path class="cmd" d="M880,205 H870 V270 H878" marker-end="url(#aC)"/>
+  <path class="cmd" d="M1000,462 V439" marker-end="url(#aC)"/>
+
+  <!-- Node2 <-> CoreIOT -->
+  <path class="tel" d="M210,395 H878" marker-end="url(#aT)"/>
+  <text class="lbl tel" x="545" y="388" text-anchor="middle">WiFi · MQTT trực tiếp: trạng thái quạt, đèn, fw_version</text>
+  <path class="cmd" d="M880,425 H212" marker-end="url(#aC)"/>
+  <text class="lbl cmd" x="545" y="443" text-anchor="middle">RPC quạt/đèn · tải firmware OTA</text>
+
+  <!-- N06 <-> CoreIOT -->
+  <path class="usr" d="M800,505 H845 V335 H878" marker-end="url(#aU)"/>
+  <text class="lbl usr" x="760" y="460" text-anchor="middle">REST · WebSocket API</text>
+</svg>
+    </div>
+  </section>
+
+  <section>
+    <h2>Các luồng demo</h2>
+    <div class="flows">
+      <div class="flow">
+        <h3>A. Dữ liệu vườn lên dashboard</h3>
+        <div class="codes">T02 → T06 → T08 → T15 → T11</div>
+        <ol>
+          <li>Node 1 đọc SHT20 qua Modbus RS485 và độ ẩm đất mỗi 10 giây.</li>
+          <li>Gửi gói ESP-NOW (có <code>seq</code>, CRC) tới Bridge.</li>
+          <li>Bridge in một dòng JSON qua USB Serial.</li>
+          <li>Gateway gửi <code>v1/gateway/telemetry</code> dưới tên <code>Node1-Garden</code>.</li>
+        </ol>
+      </div>
+      <div class="flow">
+        <h3>B. Tự tưới khi đất khô</h3>
+        <div class="codes">T12 → T13 → T15 → T08 → T06</div>
+        <ol>
+          <li>Độ ẩm đất &lt; <code>soil_min</code>: RuleChain tạo alarm và gửi email.</li>
+          <li>RuleChain gửi RPC <code>setPump</code> cho <code>Node1-Garden</code>.</li>
+          <li>RPC đi qua <code>v1/gateway/rpc</code> tới Gateway, rồi xuống Bridge.</li>
+          <li>Bridge gửi ESP-NOW, Node 1 bật relay bơm và báo lại.</li>
+        </ol>
+      </div>
+      <div class="flow">
+        <h3>C. Tự bật quạt khi nóng</h3>
+        <div class="codes">T02 → T12 → T11</div>
+        <ol>
+          <li>Nhiệt độ từ SHT20 của <code>Node1-Garden</code> vào RuleChain.</li>
+          <li>Nhiệt độ &gt; <code>temp_max</code>: đổi originator theo relation sang <code>Node2-Control</code>.</li>
+          <li>Gửi RPC <code>setFan</code>, Node 2 bật quạt. Người dùng cũng bật tắt quạt, đèn trên dashboard.</li>
+        </ol>
+      </div>
+      <div class="flow">
+        <h3>D. Mất Internet rồi có lại</h3>
+        <div class="codes">T15</div>
+        <ol>
+          <li>Gateway mất kết nối, lưu dữ liệu vào SQLite.</li>
+          <li>Có mạng lại: gửi bù kèm <code>ts</code> gốc.</li>
+          <li>Biểu đồ trên CoreIOT không bị đứt đoạn.</li>
+        </ol>
+      </div>
+      <div class="flow">
+        <h3>E. Cập nhật firmware OTA</h3>
+        <div class="codes">T14</div>
+        <ol>
+          <li>Upload <code>.bin</code> v1.1, gán cho Node 2.</li>
+          <li>Node 2 nhận <code>fw_version</code> mới, tải và kiểm checksum.</li>
+          <li>Khởi động lại, báo <code>fw_state = UPDATED</code>.</li>
+        </ol>
+      </div>
+      <div class="flow">
+        <h3>F. Ghi nhận sự kiện</h3>
+        <div class="codes">N06</div>
+        <ol>
+          <li>Web app nhận telemetry qua WebSocket API của CoreIOT.</li>
+          <li>Phát hiện sự kiện: bơm bật/tắt, vượt ngưỡng, node mất kết nối.</li>
+          <li>Ghi vào SQLite, hiển thị dòng thời gian và lọc theo ngày.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Thiết bị</h2>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th>Thiết bị</th><th>Dùng cho</th><th class="num">SL</th><th class="num">Giá tham khảo</th></tr></thead>
+      <tbody>
+        <tr><td>ESP32-S3 DevKitC-1 (N16R8)</td><td>Node 1 và Node 2</td><td class="num">2</td><td class="num">1 có sẵn + ~200k</td></tr>
+        <tr><td>NodeMCU (có sẵn)</td><td>Bridge</td><td class="num">1</td><td class="num">0</td></tr>
+        <tr><td>SHT20 RS485 (nhiệt độ, độ ẩm, Modbus RTU)</td><td>Node 1 – T02</td><td class="num">1</td><td class="num">~100–200k</td></tr>
+        <tr><td>Module TTL ↔ RS485 tự đảo chiều, 3.3V</td><td>Node 1 – T02</td><td class="num">1</td><td class="num">~30k</td></tr>
+        <tr><td>Cảm biến độ ẩm đất điện dung v2.0</td><td>Node 1</td><td class="num">1</td><td class="num">~25k</td></tr>
+        <tr><td>Relay 1 kênh 5V có opto + bơm chìm mini 3–6V + ống silicon</td><td>Node 1 – bơm</td><td class="num">1</td><td class="num">~55k</td></tr>
+        <tr><td>Relay 2 kênh 5V có opto</td><td>Node 2 – quạt, đèn</td><td class="num">1</td><td class="num">~35k</td></tr>
+        <tr><td>Quạt 5V 4010/5010 + LED 5 mm, điện trở 220 Ω</td><td>Node 2</td><td class="num">1</td><td class="num">~25k</td></tr>
+        <tr><td>Module USB cái ra domino + củ sạc 5V</td><td>Nguồn riêng cho bơm, tránh ESP32 reset</td><td class="num">1</td><td class="num">~25k</td></tr>
+        <tr><td>Breadboard 830 ×3, dây Dupont 3 loại, cáp USB-C data ×2</td><td>Chung</td><td class="num">—</td><td class="num">~155k</td></tr>
+        <tr><td>Chậu nhỏ, đất, cốc nước</td><td>Mô hình</td><td class="num">1</td><td class="num">~20k</td></tr>
+      </tbody>
+      <tfoot><tr><td colspan="3">Tổng (không tính board có sẵn)</td><td class="num">≈ 0,7 tr</td></tr></tfoot>
+    </table>
+    </div>
+    <p class="note" style="margin-top:10px">Node 2 không cần cảm biến: RuleChain lấy nhiệt độ từ SHT20 của Node 1 để bật quạt ở Node 2. Cảm biến đất phải cắm chân ADC1 (GPIO1–10) vì ADC2 không đọc được khi bật ESP-NOW.</p>
+  </section>
+
+  <section>
+    <h2>Chia việc 5 người</h2>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th>TV</th><th>Vai trò</th><th>Mã</th><th>Việc cụ thể</th><th>Báo cáo</th><th>Giữ phần cứng</th></tr></thead>
+      <tbody>
+        <tr><td><b>TV1</b></td><td>Node vườn + N06</td><td><span class="chip">T02</span><span class="chip n">N06</span></td><td>Đọc SHT20 qua Modbus RS485, đọc độ ẩm đất, điều khiển relay bơm trên Node 1. Làm dashboard riêng ghi log sự kiện.</td><td>2.3.1, 3.2.1, 3.7</td><td>Node 1, SHT20, bơm</td></tr>
+        <tr><td><b>TV2</b></td><td>ESP-NOW + Bridge</td><td><span class="chip">T06</span></td><td>Thư viện <code>protocol.h</code> dùng chung, ESP-NOW hai chiều có ACK, Bridge ⇄ Serial. Đo mất gói theo khoảng cách.</td><td>2.3.2, 3.3 · Chương 1 · tổng biên tập</td><td>NodeMCU (Bridge)</td></tr>
+        <tr><td><b>TV3</b></td><td>Node điều khiển + OTA</td><td><span class="chip">T14</span></td><td>Firmware Node 2: relay quạt và đèn, MQTT trực tiếp, RPC, OTA bằng ThingsBoard SDK. Đo OTA 10 lần.</td><td>3.2.2, 3.6.3 · Chương 6 + README</td><td>Node 2, quạt, LED</td></tr>
+        <tr><td><b>TV4</b></td><td>IoT Gateway</td><td><span class="chip">T08</span><span class="chip">T15</span></td><td>Python: đọc Serial, <code>TBGatewayMqttClient</code>, chuyển RPC xuống Bridge, đồng bộ attribute, SQLite gửi bù. Đo độ trễ.</td><td>2.3.3, 3.4</td><td>Laptop gateway</td></tr>
+        <tr><td><b>TV5</b></td><td>Nền tảng CoreIOT</td><td><span class="chip">T11</span><span class="chip">T12</span><span class="chip">T13</span></td><td>Device profile, dashboard, RuleChain tưới và quạt (relation Node 1 → Node 2), notification. Export JSON vào repo.</td><td>2.3.5, 3.6.1–3.6.2 · Chương 4 + video</td><td>—</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+</div>
