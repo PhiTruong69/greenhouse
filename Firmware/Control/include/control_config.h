@@ -5,7 +5,7 @@
 
 // ---------- Firmware (OTA so sánh 2 giá trị này với gói trên CoreIOT) ----------
 #define FW_TITLE   "node2-control"  // phải trùng "Title" của OTA package trên CoreIOT
-#define FW_VERSION "1.0.0"          // tăng mỗi lần build bản mới để OTA
+#define FW_VERSION "1.1.0"          // tăng mỗi lần build bản mới để OTA
 
 // ---------- CoreIOT (nền ThingsBoard) ----------
 #define COREIOT_HOST "app.coreiot.io"

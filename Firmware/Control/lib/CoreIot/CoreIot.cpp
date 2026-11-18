@@ -114,7 +114,15 @@ void coreiot_begin() {
 }
 
 void coreiot_loop() {
-  if (WiFi.status() != WL_CONNECTED) return;  // WiFi tự kết nối lại
+  // In log mỗi khi WiFi đổi trạng thái (kết nối / rớt)
+  static bool wifiWasUp = false;
+  bool wifiUp = WiFi.status() == WL_CONNECTED;
+  if (wifiUp != wifiWasUp) {
+    wifiWasUp = wifiUp;
+    if (wifiUp) Serial.printf("[WIFI] Is connected, IP %s, RSSI %d dBm\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
+    else Serial.println("[WIFI] disconnected");
+  }
+  if (!wifiUp) return;  // WiFi tự kết nối lại
 
   if (!tb.connected()) {
     if (millis() - lastConnectTryMs < RECONNECT_PERIOD_MS) return;

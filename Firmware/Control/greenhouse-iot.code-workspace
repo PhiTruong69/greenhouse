@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"name": "Sensor_node",
+			"path": "../Sensor_node"
+		},
+		{
+			"name": "Bridge",
+			"path": "../Bridge"
+		},
+		{
+			"name": "Control",
+			"path": "."
+		}
+	],
+	"settings": {}
+}
