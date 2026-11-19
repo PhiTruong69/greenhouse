@@ -1,0 +1,10 @@
+{
+  "serial_port": "COM21",
+  "serial_baud": 115200,
+  "coreiot_host": "app.coreiot.io",
+  "coreiot_port": 1883,
+  "gateway_token": "ACCESS_TOKEN_CUA_DEVICE_GATEWAY",
+  "device_type": "default",
+  "nodes": { "1": "Node1-Garden" },
+  "node_timeout_s": 60
+}
